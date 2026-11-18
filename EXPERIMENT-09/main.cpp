@@ -1,84 +1,126 @@
-#include <iostream>
-#include <vector>
-#include <map>
-#include <unordered_map>
-#include <algorithm>
-#include <string>
 
+#include <iostream>
+#include <string>
 using namespace std;
 
-struct Student {
-    int id;
-    string name;
-    double marks;
+// Base Exception Class
+class BankException {
+protected:
+    string message;
+
+public:
+    BankException(const string &msg) : message(msg) {}
+
+    string getMessage() const {
+        return message;
+    }
 };
 
-char calculateGrade(double marks) {
-    if (marks >= 90.0)
-        return 'A';
-    if (marks >= 75.0)
-        return 'B';
-    if (marks >= 60.0)
-        return 'C';
+// Invalid Amount Exception
+class InvalidAmountException : public BankException {
+public:
+    InvalidAmountException(double amount)
+        : BankException("Invalid transaction amount: $" +
+                        to_string(amount) +
+                        ". Must be positive.") {}
+};
 
-    return 'F';
-}
+// Insufficient Funds Exception
+class InsufficientFundsException : public BankException {
+public:
+    InsufficientFundsException(double attempted, double balance)
+        : BankException("Insufficient funds: Balance is $" +
+                        to_string(balance) +
+                        ", tried to withdraw $" +
+                        to_string(attempted) + ".") {}
+};
 
+// Account Frozen Exception
+class AccountFrozenException : public BankException {
+public:
+    AccountFrozenException(const string &accountId)
+        : BankException("Transaction blocked: Account [" +
+                        accountId +
+                        "] is currently frozen.") {}
+};
+
+// Bank Account Class
+class BankAccount {
+private:
+    string accountId;
+    double balance;
+    bool frozen;
+
+public:
+    BankAccount(string id, double bal)
+        : accountId(id), balance(bal), frozen(false) {}
+
+    void freezeAccount() {
+        frozen = true;
+    }
+
+    void deposit(double amount) {
+        if (frozen)
+            throw AccountFrozenException(accountId);
+
+        if (amount <= 0)
+            throw InvalidAmountException(amount);
+
+        balance += amount;
+
+        cout << "Deposited $" << amount
+             << ". New Balance: $" << balance << endl;
+    }
+
+    void withdraw(double amount) {
+        if (frozen)
+            throw AccountFrozenException(accountId);
+
+        if (amount <= 0)
+            throw InvalidAmountException(amount);
+
+        if (amount > balance)
+            throw InsufficientFundsException(amount, balance);
+
+        balance -= amount;
+
+        cout << "Withdrawn $" << amount
+             << ". Balance: $" << balance << endl;
+    }
+};
+
+// Main Function
 int main() {
-    vector<Student> students = {
-        {101, "Justin", 82.0},
-        {102, "Emma", 94.0},
-        {103, "Jennifer", 58.0},
-        {104, "Sunny", 75.0},
-        {105, "Victoria", 68.0}
-    };
+    BankAccount acc("ACC-9081", 500.00);
 
-    // Transform marks by applying a function
-    transform(students.begin(), students.end(),
-              students.begin(),
-              [](Student &s) {
-                  s.marks = min(100.0, s.marks);
-                  return s;
-              });
-
-    // Sort students by marks
-    sort(students.begin(), students.end(),
-         [](const Student &a, const Student &b) {
-             return a.marks > b.marks;
-         });
-
-    cout << "Sorted Leaderboard:" << endl;
-
-    for (const auto &s : students) {
-        cout << "ID: " << s.id
-             << " Name: " << s.name
-             << " Marks: " << s.marks
-             << " Grade: " << calculateGrade(s.marks)
-             << endl;
+    // Deposit and Insufficient Funds Exception
+    try {
+        acc.deposit(200.00);
+        acc.withdraw(1000.00);
+    }
+    catch (const InsufficientFundsException &e) {
+        cout << "[Funds Error] " << e.getMessage() << endl;
+    }
+    catch (const BankException &e) {
+        cout << "[Bank Error] " << e.getMessage() << endl;
     }
 
-    // Find first student having marks less than 60
-    auto it = find_if(students.begin(), students.end(),
-                      [](const Student &s) {
-                          return s.marks < 60;
-                      });
-
-    if (it != students.end()) {
-        cout << "\nFirst student needing attention: "
-             << it->name << endl;
+    // Invalid Amount Exception
+    try {
+        acc.deposit(-50.00);
+    }
+    catch (const InvalidAmountException &e) {
+        cout << "[Amount Error] " << e.getMessage() << endl;
     }
 
-    unordered_map<int, double> idToMarks;
-    map<char, vector<string>> gradeDistribution;
-
-    for (const auto &s : students) {
-        idToMarks[s.id] = s.marks;
-        gradeDistribution[calculateGrade(s.marks)]
-            .push_back(s.name);
+    // Account Frozen Exception
+    try {
+        acc.freezeAccount();
+        acc.withdraw(100.00);
     }
-
-    cout << "\nFast lookup: Marks of ID 104 = "
-         << idToMarks[104] << endl;
+    catch (const AccountFrozenException &e) {
+        cout << "[Security Error] " << e.getMessage() << endl;
+    }
 
     return 0;
 }
