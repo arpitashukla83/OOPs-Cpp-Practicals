@@ -1,70 +1,84 @@
 #include <iostream>
+#include <vector>
+#include <map>
+#include <unordered_map>
+#include <algorithm>
 #include <string>
+
 using namespace std;
 
-template <class T>
-class Stack {
-    T arr[100];
-    int top;
-
-public:
-    Stack() {
-        top = -1;
-    }
-
-    void push(T value) {
-        if (top == 99) {
-            cout << "Stack Overflow";
-            return;
-        }
-        arr[++top] = value;
-    }
-
-    void pop() {
-        if (top == -1) {
-            cout << "Stack Underflow";
-            return;
-        }
-
-        cout << "Popped: " << arr[top--] << endl;
-    }
-
-    void display() {
-        if (top == -1) {
-            cout << "Stack is empty";
-            return;
-        }
-
-        for (int i = top; i >= 0; i--) {
-            cout << arr[i] << " ";
-        }
-
-        cout << endl;
-    }
+struct Student {
+    int id;
+    string name;
+    double marks;
 };
 
+char calculateGrade(double marks) {
+    if (marks >= 90.0)
+        return 'A';
+    if (marks >= 75.0)
+        return 'B';
+    if (marks >= 60.0)
+        return 'C';
+
+    return 'F';
+}
+
 int main() {
-    Stack<int> s1;
-    s1.push(10);
-    s1.push(20);
-    s1.push(30);
+    vector<Student> students = {
+        {101, "Justin", 82.0},
+        {102, "Emma", 94.0},
+        {103, "Jennifer", 58.0},
+        {104, "Sunny", 75.0},
+        {105, "Victoria", 68.0}
+    };
 
-    cout << "Integer Stack: ";
-    s1.display();
+    // Transform marks by applying a function
+    transform(students.begin(), students.end(),
+              students.begin(),
+              [](Student &s) {
+                  s.marks = min(100.0, s.marks);
+                  return s;
+              });
 
-    Stack<float> s2;
-    s2.push(10.5);
-    s2.push(20.5);
+    // Sort students by marks
+    sort(students.begin(), students.end(),
+         [](const Student &a, const Student &b) {
+             return a.marks > b.marks;
+         });
 
-    cout << "Float Stack: ";
-    s2.display();
+    cout << "Sorted Leaderboard:" << endl;
 
-    Stack<string> s3;
-    s3.push("Hello");
-    s3.push("World");
+    for (const auto &s : students) {
+        cout << "ID: " << s.id
+             << " Name: " << s.name
+             << " Marks: " << s.marks
+             << " Grade: " << calculateGrade(s.marks)
+             << endl;
+    }
 
-    cout << "String Stack: ";
-    s3.display();
+    // Find first student having marks less than 60
+    auto it = find_if(students.begin(), students.end(),
+                      [](const Student &s) {
+                          return s.marks < 60;
+                      });
+
+    if (it != students.end()) {
+        cout << "\nFirst student needing attention: "
+             << it->name << endl;
+    }
+
+    unordered_map<int, double> idToMarks;
+    map<char, vector<string>> gradeDistribution;
+
+    for (const auto &s : students) {
+        idToMarks[s.id] = s.marks;
+        gradeDistribution[calculateGrade(s.marks)]
+            .push_back(s.name);
+    }
+
+    cout << "\nFast lookup: Marks of ID 104 = "
+         << idToMarks[104] << endl;
 
     return 0;
 }
